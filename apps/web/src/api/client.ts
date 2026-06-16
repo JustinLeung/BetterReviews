@@ -79,6 +79,10 @@ export interface PlaceFilters {
   city?: string;
   category?: string;
   search?: string;
+  nearLat?: number;
+  nearLng?: number;
+  /** Max distance in metres. */
+  radius?: number;
 }
 
 export const api = {

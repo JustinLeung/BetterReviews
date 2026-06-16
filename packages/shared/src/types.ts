@@ -131,6 +131,8 @@ export interface PlaceWithSummary extends Place {
   coverPhotoUrl: string | null;
   /** Whether the current (mock) user has saved this place. */
   saved: boolean;
+  /** Metres from the query point, present only for proximity ("near me") queries. */
+  distanceMeters?: number | null;
 }
 
 /** Place detail view, with photos and the reasons people selected. */

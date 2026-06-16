@@ -72,6 +72,8 @@ function rowToPlaceWithSummary(row: any): PlaceWithSummary {
     matchScore: calculateMatchScore(recommendationSummary),
     coverPhotoUrl: row.cover_photo_url ?? null,
     saved: Boolean(row.saved),
+    distanceMeters:
+      row.distance_meters != null ? Math.round(Number(row.distance_meters)) : null,
   };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -80,6 +82,10 @@ export interface PlaceFilters {
   city?: string;
   category?: string;
   search?: string;
+  nearLat?: number;
+  nearLng?: number;
+  /** Optional max distance in metres; when omitted, results are only sorted by distance. */
+  radius?: number;
 }
 
 /** GET /places — discover list with lightweight aggregate signal. */
@@ -87,18 +93,43 @@ export async function listPlaces(
   filters: PlaceFilters,
   userId: string | null,
 ): Promise<PlaceWithSummary[]> {
+  const hasNear = filters.nearLat != null && filters.nearLng != null;
+
+  // $1=city $2=category $3=search $4=userId; then (proximity) $5=lng $6=lat $7=radius.
+  const params: unknown[] = [
+    filters.city ?? null,
+    filters.category ?? null,
+    filters.search ?? null,
+    userId,
+  ];
+
+  let distanceSelect = '';
+  let nearFilter = '';
+  let orderBy = 'ORDER BY p.created_at DESC';
+
+  if (hasNear) {
+    params.push(filters.nearLng, filters.nearLat, filters.radius ?? null);
+    const point = 'ST_SetSRID(ST_MakePoint($5, $6), 4326)::geography';
+    distanceSelect = `, ST_Distance(p.geog, ${point}) AS distance_meters`;
+    // Require a location, and optionally cap by radius.
+    nearFilter = `AND p.geog IS NOT NULL
+      AND ($7::double precision IS NULL OR ST_DWithin(p.geog, ${point}, $7))`;
+    orderBy = `ORDER BY ST_Distance(p.geog, ${point}) ASC`;
+  }
+
   const { rows } = await query(
     `
-    SELECT ${enrichedPlaceColumns('$4')}
+    SELECT ${enrichedPlaceColumns('$4')}${distanceSelect}
     FROM places p
     ${LATEST_STANCE_JOIN}
     WHERE ($1::text IS NULL OR p.city ILIKE $1)
       AND ($2::text IS NULL OR p.category ILIKE $2)
       AND ($3::text IS NULL OR p.name ILIKE '%' || $3 || '%' OR p.address ILIKE '%' || $3 || '%')
+      ${nearFilter}
     GROUP BY p.id
-    ORDER BY p.created_at DESC
+    ${orderBy}
     `,
-    [filters.city ?? null, filters.category ?? null, filters.search ?? null, userId],
+    params,
   );
   return rows.map(rowToPlaceWithSummary);
 }

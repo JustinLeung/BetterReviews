@@ -8,11 +8,20 @@ import * as placeService from '../services/placeService';
 import { listPostsForPlace } from '../services/postService';
 import { savePlace, unsavePlace } from '../services/saveService';
 
-const placesQuerySchema = z.object({
-  city: z.string().trim().min(1).optional(),
-  category: z.string().trim().min(1).optional(),
-  search: z.string().trim().min(1).optional(),
-});
+const placesQuerySchema = z
+  .object({
+    city: z.string().trim().min(1).optional(),
+    category: z.string().trim().min(1).optional(),
+    search: z.string().trim().min(1).optional(),
+    // Proximity ("near me"): coerced from query strings.
+    nearLat: z.coerce.number().min(-90).max(90).optional(),
+    nearLng: z.coerce.number().min(-180).max(180).optional(),
+    radius: z.coerce.number().positive().max(200000).optional(), // metres, ≤ 200km
+  })
+  .refine((q) => (q.nearLat === undefined) === (q.nearLng === undefined), {
+    message: 'nearLat and nearLng must be provided together.',
+    path: ['nearLat'],
+  });
 
 const createPlaceSchema = z.object({
   name: z.string().trim().min(1),

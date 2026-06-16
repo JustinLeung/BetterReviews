@@ -4,9 +4,19 @@ import { MatchScoreBadge } from './MatchScoreBadge';
 import { SaveButton } from './SaveButton';
 import { RecommendationSummary } from './RecommendationSummary';
 
+function formatDistance(m: number): string {
+  return m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1)} km`;
+}
+
 /** Photo-first discover card. */
 export function PlaceCard({ place }: { place: PlaceWithSummary }) {
-  const meta = [place.category, place.city].filter(Boolean).join(' · ');
+  const meta = [
+    place.distanceMeters != null ? formatDistance(place.distanceMeters) : null,
+    place.category,
+    place.city,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <Link to={`/places/${place.id}`} className="place-card">
