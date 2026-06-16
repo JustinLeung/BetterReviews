@@ -20,6 +20,7 @@
     "migrate": "npm run migrate -w @betterreviews/server",
     "seed": "npm run seed -w @betterreviews/server",
     "db:reset": "npm run migrate && npm run seed",
+    "supabase:setup": "npm run migrate && npm run supabase:auth -w @betterreviews/server && npm run seed",
     "typecheck": "npm run typecheck -w @betterreviews/shared && npm run typecheck -w @betterreviews/server && npm run typecheck -w @betterreviews/web"
   },
   "devDependencies": {
