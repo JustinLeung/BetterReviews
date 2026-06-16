@@ -8,9 +8,23 @@ import type {
   RecommendationWithDetails,
   Save,
 } from '@betterreviews/shared';
+import { isSupabaseConfigured, supabase } from '../lib/supabase';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000';
 const MOCK_USER_ID = import.meta.env.VITE_MOCK_USER_ID ?? '';
+
+/**
+ * Auth headers for an API request. In Supabase mode, send the session's access
+ * token as a Bearer; otherwise (legacy/no-auth mode) send the mock-user header.
+ */
+async function authHeaders(): Promise<Record<string, string>> {
+  if (isSupabaseConfigured && supabase) {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+  return MOCK_USER_ID ? { 'x-mock-user-id': MOCK_USER_ID } : {};
+}
 
 export class ApiError extends Error {
   readonly status: number;
@@ -26,9 +40,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      // Local-development-only mock auth header. Replaced by a real Supabase
-      // session token once auth is wired up.
-      ...(MOCK_USER_ID ? { 'x-mock-user-id': MOCK_USER_ID } : {}),
+      ...(await authHeaders()),
       ...options.headers,
     },
   });

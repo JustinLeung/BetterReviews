@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import type { RecommendationValue, RecommendationWithDetails } from '@betterreviews/shared';
 import { api } from '../api/client';
 import { useAsync } from '../hooks/useAsync';
+import { useAuth } from '../auth/AuthProvider';
 import { MatchScoreBadge } from '../components/MatchScoreBadge';
 import { RecommendationSummary } from '../components/RecommendationSummary';
 import { PhotoGrid } from '../components/PhotoGrid';
@@ -18,7 +19,16 @@ const VALUE_BADGE: Record<RecommendationValue, string> = {
 
 export function PlaceDetailPage() {
   const { id = '' } = useParams();
+  const { isConfigured, user, promptSignIn } = useAuth();
   const [showForm, setShowForm] = useState(false);
+
+  const openRecommend = () => {
+    if (isConfigured && !user) {
+      promptSignIn();
+      return;
+    }
+    setShowForm(true);
+  };
 
   const place = useAsync(() => api.getPlace(id), [id]);
   const recs = useAsync(() => api.listRecommendations(id), [id]);
@@ -67,7 +77,7 @@ export function PlaceDetailPage() {
           <p className="place-detail__match">{p.matchScore.label}</p>
           <RecommendationSummary summary={p.recommendationSummary} />
           <div className="place-detail__actions">
-            <button className="btn btn--primary" onClick={() => setShowForm(true)}>
+            <button className="btn btn--primary" onClick={openRecommend}>
               Recommend this place
             </button>
             <SaveButton placeId={p.id} saved={p.saved} onChange={() => place.reload()} />

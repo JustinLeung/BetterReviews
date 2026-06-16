@@ -185,13 +185,46 @@ without touching the API or client.
 
 ## Authentication
 
-- **Long term:** Supabase Auth. The server has a place to verify Supabase JWTs
-  (`apps/server/src/middleware/auth.ts`) and a lazy Supabase client
-  (`src/lib/supabase.ts`).
-- **For now (local dev only):** mock auth. A request is treated as the user in
-  the `x-mock-user-id` header, falling back to the `MOCK_USER_ID` env var. The
-  web client sends `VITE_MOCK_USER_ID`. Mock auth is **disabled when
-  `NODE_ENV=production`** — leave `MOCK_USER_ID` unset there.
+The app supports **real Supabase Auth (passwordless magic link)** and a
+**mock-auth** fallback, selected by configuration:
+
+- **Supabase mode** (when `SUPABASE_URL`/keys are set on the server and
+  `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` on the web): the client signs in
+  with a magic link (`signInWithOtp`) and sends the session's access token as
+  `Authorization: Bearer …`. The server validates the token
+  (`middleware/auth.ts` → `supabase.auth.getUser`). A `public.users` profile is
+  auto-created on first sign-in by a trigger on `auth.users`
+  (`apps/server/sql/supabase_auth.sql`).
+- **Mock mode** (no Supabase configured): a request is treated as the
+  `x-mock-user-id` header / `MOCK_USER_ID` env user; the web client sends
+  `VITE_MOCK_USER_ID`. Disabled when `NODE_ENV=production`.
+
+### Local auth with Supabase (magic link)
+
+Requires the [Supabase CLI](https://supabase.com/docs/guides/cli) and Docker.
+This project's local Supabase ports are remapped to `5442x`/`5472x` in
+`supabase/config.toml` (so it can coexist with other local Supabase projects);
+`supabase status` prints the actual URLs/keys.
+
+```bash
+supabase start                       # Postgres + Auth (GoTrue) + Mailpit mailbox
+
+# Apply schema, auth linkage (profile trigger + RLS), and seed to Supabase:
+DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54722/postgres" \
+  npm run supabase:setup
+
+# Configure the apps (the .env.example files already contain the local keys):
+cp apps/server/.env.example apps/server/.env
+cp apps/web/.env.example     apps/web/.env.local
+
+npm run dev                          # server (4000) + web (5173)
+```
+
+Then open http://localhost:5173, click **Sign in**, enter any email, and open
+the magic link from the local mailbox at **http://localhost:54724** (Mailpit) —
+no real email is sent. Saving/recommending now requires being signed in.
+
+Stop the stack with `supabase stop` (add `--no-backup` to wipe local data).
 
 ---
 
@@ -216,13 +249,16 @@ Cloudflare Pages): `npm run build -w @betterreviews/web` → publish
 
 ### Supabase
 
-To use hosted Supabase instead of local Docker Postgres:
+See **Local auth with Supabase** above for the local stack. To use a hosted
+Supabase project:
 
 1. Create a Supabase project.
-2. Copy the Postgres **connection string** → `DATABASE_URL` (migrations run
-   against it just like local Postgres).
-3. Add `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
-4. **Auth (future):** wire JWT verification in `middleware/auth.ts`.
+2. Copy the Postgres **connection string** → `DATABASE_URL`, then run
+   `npm run supabase:setup` against it (migrations + auth linkage + seed).
+3. Add `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server)
+   and `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (web). Set the project's
+   Auth redirect URLs to your web origin.
+4. **Auth** is already wired (magic-link sign-in + JWT verification).
 5. **Storage (future):** replace the URL-only photo flow with signed uploads —
    see the TODOs in `services/photoService.ts` and `lib/supabase.ts`.
 
@@ -230,7 +266,9 @@ To use hosted Supabase instead of local Docker Postgres:
 
 ## What is stubbed / mocked
 
-- **Auth** — mock user header; no real Supabase JWT verification yet.
+- **Auth** — real Supabase magic-link auth works locally (and a mock-user
+  fallback for the no-Supabase workflow). The server validates JWTs over the
+  network via `getUser`; verifying the signature locally is a TODO.
 - **Photo upload** — metadata only (image URL or storage path). No binary
   upload / Supabase Storage pipeline yet.
 - **Visibility** — `private` recommendations are hidden from others, but
@@ -239,7 +277,8 @@ To use hosted Supabase instead of local Docker Postgres:
 
 ## Next steps
 
-- Verify Supabase Auth JWTs and drop mock auth.
+- Verify Supabase JWTs locally (signature check) to drop the per-request
+  `getUser` network call; add OAuth providers alongside magic link.
 - Real photo uploads via Supabase Storage (signed URLs).
 - Friend-graph-aware visibility and a "people like you" signal feeding the
   score.

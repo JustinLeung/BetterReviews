@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '../api/client';
+import { useAuth } from '../auth/AuthProvider';
 
 /**
  * Self-contained save toggle. Optimistically updates and calls the API.
@@ -14,6 +15,7 @@ export function SaveButton({
   saved: boolean;
   onChange?: (saved: boolean) => void;
 }) {
+  const { isConfigured, user, promptSignIn } = useAuth();
   const [saved, setSaved] = useState(initialSaved);
   const [busy, setBusy] = useState(false);
 
@@ -23,6 +25,11 @@ export function SaveButton({
     e.preventDefault();
     e.stopPropagation();
     if (busy) return;
+    // Gate writes behind sign-in when auth is enabled.
+    if (isConfigured && !user) {
+      promptSignIn();
+      return;
+    }
     setBusy(true);
     const next = !saved;
     try {

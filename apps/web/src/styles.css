@@ -308,6 +308,31 @@ img { display: block; max-width: 100%; }
 .modal__close { border: none; background: transparent; font-size: 18px; cursor: pointer; color: var(--ink-soft); }
 .modal__body { padding: 18px; }
 
+/* Auth -------------------------------------------------------------------- */
+.authbar { display: inline-flex; align-items: center; gap: 8px; margin-left: 4px; }
+.authbar__email {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+.authbar__btn {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.authbar__btn--primary { background: var(--brand); border-color: var(--brand); }
+.login-form { display: flex; flex-direction: column; gap: 14px; }
+.login-sent { display: flex; flex-direction: column; gap: 12px; }
+.login-sent a { color: var(--brand-ink); font-weight: 600; }
+
 /* Misc -------------------------------------------------------------------- */
 .muted { color: var(--muted); }
 .form-error { color: var(--no); background: #fef2f2; border: 1px solid #fecaca; padding: 10px 12px; border-radius: 10px; }
