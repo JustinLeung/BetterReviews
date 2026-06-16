@@ -52,8 +52,8 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'users','places','reason_tags','recommendations','photos',
-    'recommendation_reason_tags','follows','saves','schema_migrations'
+    'users','places','reason_tags','posts','photos',
+    'post_reason_tags','follows','saves','schema_migrations'
   ] loop
     execute format('alter table if exists public.%I enable row level security;', t);
   end loop;

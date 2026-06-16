@@ -126,13 +126,17 @@ and `apps/web/.env.example`. Highlights:
 
 ## Database & migrations
 
-- Schema: `apps/server/migrations/001_init_schema.sql` — applied in filename
-  order by a tiny runner (`src/db/migrate.ts`) that records applied files in a
+- Schema: `apps/server/migrations/*.sql` — applied in filename order by a tiny
+  runner (`src/db/migrate.ts`) that records applied files in a
   `schema_migrations` table. Migrations use `CREATE … IF NOT EXISTS` and
-  `CHECK` constraints (not enum types) so they re-run cleanly.
+  `CHECK` constraints (not enum types) so they re-run cleanly. `001` is the
+  initial schema; `002` reshapes it into per-visit **posts** and adds PostGIS
+  (geography + GiST) for proximity search — so the local DB image is
+  `imresamu/postgis` (multi-arch), not stock `postgres`.
 - Seed: `apps/server/seeds/001_seed.sql` — a test user, a second user, six
-  Munich places, the predefined reason tags, plus sample recommendations and
-  photos. Every insert is `ON CONFLICT DO NOTHING`, so seeding is idempotent.
+  Munich places, the predefined reason tags, plus sample posts (incl. repeat
+  visits) and photos. Every insert is `ON CONFLICT DO NOTHING`, so seeding is
+  idempotent.
 
 Add a migration by dropping a new `NNN_name.sql` file in `migrations/` and
 running `npm run migrate`.
@@ -149,21 +153,24 @@ Base URL: `http://localhost:4000`
 | GET    | `/places`                     | Discover list. Query: `city`, `category`, `search` |
 | POST   | `/places`                     | Create a place                                   |
 | GET    | `/places/:id`                 | Place detail + aggregate signal, photos, reasons |
-| GET    | `/places/:id/recommendations` | Recommendations for a place                      |
-| POST   | `/recommendations`            | Create/update your recommendation (auth)         |
-| POST   | `/photos`                     | Store photo metadata (auth)                      |
+| GET    | `/places/:id/posts`           | Posts for a place (visibility-filtered)          |
+| POST   | `/posts`                      | Create a post for a place — per visit (auth)     |
+| POST   | `/photos`                     | Store photo metadata for a post (auth)           |
 | GET    | `/reason-tags`                | Predefined reason tags                           |
 | POST   | `/places/:id/save`            | Save a place (auth)                              |
 | DELETE | `/places/:id/save`            | Unsave a place (auth)                            |
 | GET    | `/me/saves`                   | Your saved places (auth)                         |
 
-`POST /recommendations` body:
+`POST /posts` body (`note`, `visitedAt`, `reasonTagIds` optional; photos are
+attached afterwards via `POST /photos` with the returned `postId`):
 
 ```json
 {
   "placeId": "11111111-1111-1111-1111-111111110001",
   "recommendationValue": "yes",
   "visibility": "friends",
+  "note": "Great spot under the chestnuts.",
+  "visitedAt": "2026-06-16",
   "reasonTagIds": ["22222222-2222-2222-2222-222222220001"]
 }
 ```
@@ -271,9 +278,11 @@ Supabase project:
   network via `getUser`; verifying the signature locally is a TODO.
 - **Photo upload** — metadata only (image URL or storage path). No binary
   upload / Supabase Storage pipeline yet.
-- **Visibility** — `private` recommendations are hidden from others, but
-  `friends` is not yet filtered by a real follow graph.
-- **Match score** — aggregate-only placeholder, not personalized.
+- **Visibility** — enforced when reading posts: `public` is visible to all,
+  `private` only to the author, and `friends` to the people the author follows
+  (directional, via the `follows` graph).
+- **Match score** — aggregate-only placeholder, not personalized. One vote per
+  user, taken from each user's latest post.
 
 ## Next steps
 

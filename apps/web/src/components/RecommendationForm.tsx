@@ -54,7 +54,7 @@ export function RecommendationForm({
     setSubmitting(true);
     setError(null);
     try {
-      const recommendation = await api.createRecommendation({
+      const post = await api.createPost({
         placeId,
         recommendationValue: value,
         visibility,
@@ -64,8 +64,7 @@ export function RecommendationForm({
       // Photo upload is metadata-only for now (URL). TODO: Supabase Storage.
       if (photoUrl.trim()) {
         await api.createPhoto({
-          placeId,
-          recommendationId: recommendation.id,
+          postId: post.id,
           imageUrl: photoUrl.trim(),
           caption: caption.trim() || null,
         });

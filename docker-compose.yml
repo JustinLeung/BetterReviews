@@ -6,7 +6,12 @@
 
 services:
   db:
-    image: postgres:16-alpine
+    # PostGIS-enabled Postgres 16 (the core schema uses geography columns for
+    # proximity search; the stock postgres image has no postgis extension).
+    # imresamu/postgis is the multi-arch (amd64 + arm64) mirror of the official
+    # postgis/postgis image — the latter has no arm64 build, so it would run
+    # under slow emulation on Apple Silicon.
+    image: imresamu/postgis:16-3.4
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-betterreviews}

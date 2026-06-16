@@ -7,11 +7,11 @@ import { createPhoto } from '../services/photoService';
 
 const createPhotoSchema = z
   .object({
-    placeId: z.string().uuid(),
-    recommendationId: z.string().uuid().nullish(),
+    postId: z.string().uuid(),
     imageUrl: z.string().url().nullish(),
     storagePath: z.string().trim().min(1).nullish(),
     caption: z.string().trim().max(500).nullish(),
+    position: z.number().int().min(0).optional(),
   })
   .refine((d) => Boolean(d.imageUrl || d.storagePath), {
     message: 'Provide either imageUrl or storagePath.',

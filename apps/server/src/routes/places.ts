@@ -5,14 +5,23 @@ import { ApiError } from '../lib/errors';
 import { validateBody, validateQuery } from '../middleware/validate';
 import { requireUser } from '../middleware/auth';
 import * as placeService from '../services/placeService';
-import { listRecommendationsForPlace } from '../services/recommendationService';
+import { listPostsForPlace } from '../services/postService';
 import { savePlace, unsavePlace } from '../services/saveService';
 
-const placesQuerySchema = z.object({
-  city: z.string().trim().min(1).optional(),
-  category: z.string().trim().min(1).optional(),
-  search: z.string().trim().min(1).optional(),
-});
+const placesQuerySchema = z
+  .object({
+    city: z.string().trim().min(1).optional(),
+    category: z.string().trim().min(1).optional(),
+    search: z.string().trim().min(1).optional(),
+    // Proximity ("near me"): coerced from query strings.
+    nearLat: z.coerce.number().min(-90).max(90).optional(),
+    nearLng: z.coerce.number().min(-180).max(180).optional(),
+    radius: z.coerce.number().positive().max(200000).optional(), // metres, ≤ 200km
+  })
+  .refine((q) => (q.nearLat === undefined) === (q.nearLng === undefined), {
+    message: 'nearLat and nearLng must be provided together.',
+    path: ['nearLat'],
+  });
 
 const createPlaceSchema = z.object({
   name: z.string().trim().min(1),
@@ -58,15 +67,12 @@ placesRouter.get(
   }),
 );
 
-/** GET /places/:id/recommendations */
+/** GET /places/:id/posts */
 placesRouter.get(
-  '/:id/recommendations',
+  '/:id/posts',
   asyncHandler(async (req, res) => {
-    const recommendations = await listRecommendationsForPlace(
-      req.params.id,
-      req.userId,
-    );
-    res.json({ recommendations });
+    const posts = await listPostsForPlace(req.params.id, req.userId);
+    res.json({ posts });
   }),
 );
 

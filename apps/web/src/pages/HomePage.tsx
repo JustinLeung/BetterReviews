@@ -3,15 +3,27 @@ import { api, type PlaceFilters } from '../api/client';
 import { useAsync } from '../hooks/useAsync';
 import { PlaceCard } from '../components/PlaceCard';
 
+/** Radius for the "near me" filter, in metres. */
+const NEAR_RADIUS_M = 25_000;
+
 /** Home / Discover — a photo-first list of places. */
 export function HomePage() {
   const [search, setSearch] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
+  const [near, setNear] = useState<{ lat: number; lng: number } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
-  const filters = useMemo<PlaceFilters>(
-    () => (appliedSearch ? { search: appliedSearch } : {}),
-    [appliedSearch],
-  );
+  const filters = useMemo<PlaceFilters>(() => {
+    const f: PlaceFilters = {};
+    if (appliedSearch) f.search = appliedSearch;
+    if (near) {
+      f.nearLat = near.lat;
+      f.nearLng = near.lng;
+      f.radius = NEAR_RADIUS_M;
+    }
+    return f;
+  }, [appliedSearch, near]);
 
   const { data: places, loading, error, reload } = useAsync(
     () => api.listPlaces(filters),
@@ -21,6 +33,31 @@ export function HomePage() {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setAppliedSearch(search.trim());
+  };
+
+  const toggleNearMe = () => {
+    if (near) {
+      setNear(null);
+      setGeoError(null);
+      return;
+    }
+    if (!('geolocation' in navigator)) {
+      setGeoError('Location is not available in this browser.');
+      return;
+    }
+    setLocating(true);
+    setGeoError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setNear({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocating(false);
+      },
+      (err) => {
+        setGeoError(err.message || 'Could not get your location.');
+        setLocating(false);
+      },
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+    );
   };
 
   return (
@@ -41,6 +78,15 @@ export function HomePage() {
           <button type="submit" className="btn btn--primary">
             Search
           </button>
+          <button
+            type="button"
+            className={`btn ${near ? 'btn--primary' : 'btn--ghost'}`}
+            onClick={toggleNearMe}
+            disabled={locating}
+            aria-pressed={Boolean(near)}
+          >
+            {locating ? 'Locating…' : near ? '📍 Near you ✓' : '📍 Near me'}
+          </button>
           {appliedSearch && (
             <button
               type="button"
@@ -54,6 +100,10 @@ export function HomePage() {
             </button>
           )}
         </form>
+        {geoError && <p className="form-error">{geoError}</p>}
+        {near && !geoError && (
+          <p className="muted">Showing places within {NEAR_RADIUS_M / 1000} km, nearest first.</p>
+        )}
       </section>
 
       {loading && <p className="muted">Loading places…</p>}
@@ -67,7 +117,11 @@ export function HomePage() {
       )}
 
       {places && places.length === 0 && !loading && (
-        <p className="muted">No places found{appliedSearch ? ` for “${appliedSearch}”` : ''}.</p>
+        <p className="muted">
+          No places found
+          {appliedSearch ? ` for “${appliedSearch}”` : ''}
+          {near ? ' near you' : ''}.
+        </p>
       )}
 
       {places && places.length > 0 && (

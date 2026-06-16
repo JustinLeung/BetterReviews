@@ -3,7 +3,7 @@ import { RECOMMENDATION_VALUES, VISIBILITIES, REASON_SENTIMENTS } from './consta
 /** Whether a user would recommend a place to a friend. The core signal. */
 export type RecommendationValue = (typeof RECOMMENDATION_VALUES)[number];
 
-/** Who can see a recommendation. Friend-graph filtering comes later. */
+/** Who can see a post. "friends" = visible to the people the author follows. */
 export type Visibility = (typeof VISIBILITIES)[number];
 
 /** Sentiment bucket for a predefined reason tag. */
@@ -38,12 +38,20 @@ export interface Place {
   updated_at: string;
 }
 
-export interface Recommendation {
+/**
+ * A per-visit post about a place — the core content item. A user can post
+ * about the same place more than once (a timeline); their most recent post is
+ * the one that counts toward the place's match score.
+ */
+export interface Post {
   id: string;
   user_id: string;
   place_id: string;
   recommendation_value: RecommendationValue;
   visibility: Visibility;
+  note: string | null;
+  /** When the user visited (date-only), distinct from created_at. */
+  visited_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -52,10 +60,12 @@ export interface Photo {
   id: string;
   user_id: string;
   place_id: string;
-  recommendation_id: string | null;
+  post_id: string;
   image_url: string | null;
   storage_path: string | null;
   caption: string | null;
+  /** Order within the post's gallery. */
+  position: number;
   created_at: string;
 }
 
@@ -65,8 +75,8 @@ export interface ReasonTag {
   sentiment: ReasonSentiment;
 }
 
-export interface RecommendationReasonTag {
-  recommendation_id: string;
+export interface PostReasonTag {
+  post_id: string;
   reason_tag_id: string;
 }
 
@@ -77,7 +87,6 @@ export interface Follow {
 }
 
 export interface Save {
-  id: string;
   user_id: string;
   place_id: string;
   created_at: string;
@@ -87,7 +96,10 @@ export interface Save {
 // Aggregate / response shapes used by the API.
 // ---------------------------------------------------------------------------
 
-/** Raw counts of the lightweight recommendation signal for a place. */
+/**
+ * Raw counts of the recommendation signal for a place — one vote per user,
+ * taken from each user's latest post.
+ */
 export interface RecommendationSummary {
   yes: number;
   maybe: number;
@@ -106,7 +118,7 @@ export interface MatchScore {
   sampleSize: number;
 }
 
-/** A reason tag plus how many recommendations selected it for a place. */
+/** A reason tag plus how many posts selected it for a place. */
 export interface ReasonTagSummaryItem extends ReasonTag {
   count: number;
 }
@@ -118,6 +130,8 @@ export interface PlaceWithSummary extends Place {
   coverPhotoUrl: string | null;
   /** Whether the current (mock) user has saved this place. */
   saved: boolean;
+  /** Metres from the query point, present only for proximity ("near me") queries. */
+  distanceMeters?: number | null;
 }
 
 /** Place detail view, with photos and the reasons people selected. */
@@ -126,8 +140,8 @@ export interface PlaceDetail extends PlaceWithSummary {
   reasonTagSummary: ReasonTagSummaryItem[];
 }
 
-/** A recommendation enriched with its author, reason tags and photos. */
-export interface RecommendationWithDetails extends Recommendation {
+/** A post enriched with its author, reason tags and photos. */
+export interface PostWithDetails extends Post {
   user: Pick<User, 'id' | 'display_name' | 'username' | 'avatar_url'>;
   reasonTags: ReasonTag[];
   photos: Photo[];
@@ -149,17 +163,20 @@ export interface CreatePlaceInput {
   externalSource?: string | null;
 }
 
-export interface CreateRecommendationInput {
+export interface CreatePostInput {
   placeId: string;
   recommendationValue: RecommendationValue;
   visibility?: Visibility;
+  note?: string | null;
+  /** Date-only string (YYYY-MM-DD). */
+  visitedAt?: string | null;
   reasonTagIds?: string[];
 }
 
 export interface CreatePhotoInput {
-  placeId: string;
-  recommendationId?: string | null;
+  postId: string;
   imageUrl?: string | null;
   storagePath?: string | null;
   caption?: string | null;
+  position?: number;
 }
