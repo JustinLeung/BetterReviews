@@ -3,16 +3,23 @@ import { Link } from 'react-router-dom';
 import type { PlaceWithSummary } from '@betterreviews/shared';
 import { api } from '../api/client';
 import { useAsync } from '../hooks/useAsync';
-import { scoreClass, scoreText } from '../lib/match';
+import { categoriesOf, scoreClass, scoreText } from '../lib/match';
+import { SignalRow } from '../components/SignalRow';
 
-const MOODS = ['For you', 'Quiet', 'Lively', 'Adventurous', 'Cheap eats', 'Date night'];
+const ALL = 'For you';
 
 /** Discover — a curated "For You" feed (the browse interaction model). */
 export function FeedPage() {
-  const [mood, setMood] = useState('For you');
+  const [category, setCategory] = useState(ALL);
   const { data: places, loading, error, reload } = useAsync(() => api.listPlaces(), []);
 
-  const { hero, twins, gems } = useMemo(() => split(places ?? []), [places]);
+  const filters = useMemo(() => [ALL, ...categoriesOf(places ?? [])], [places]);
+
+  const { hero, twins, gems } = useMemo(() => {
+    const scoped =
+      category === ALL ? (places ?? []) : (places ?? []).filter((p) => p.category === category);
+    return split(scoped);
+  }, [places, category]);
 
   return (
     <div className="feed">
@@ -25,9 +32,13 @@ export function FeedPage() {
       </div>
 
       <div className="mood-row">
-        {MOODS.map((m) => (
-          <button key={m} className={`chip ${m === mood ? 'on' : ''}`} onClick={() => setMood(m)}>
-            {m}
+        {filters.map((c) => (
+          <button
+            key={c}
+            className={`chip ${c === category ? 'on' : ''}`}
+            onClick={() => setCategory(c)}
+          >
+            {c}
           </button>
         ))}
       </div>
@@ -126,6 +137,7 @@ function HeroCard({ place }: { place: PlaceWithSummary }) {
         <h3 className="topmatch__name">{place.name}</h3>
         {meta && <p className="topmatch__meta">{meta}</p>}
         <p className="whyline">{place.matchScore.label}.</p>
+        <SignalRow place={place} />
       </div>
     </Link>
   );

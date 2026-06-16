@@ -253,6 +253,20 @@ button { font-family: inherit; }
   background: #f1f5f1; border: 1px solid #dde9e1; border-radius: 12px; padding: 11px 14px;
 }
 
+/* evidence behind a score: sample size + real reason tags */
+.signal { margin-top: 12px; display: flex; flex-direction: column; gap: 9px; }
+.signal__meta { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.signal__building { color: var(--honey-d); }
+.signal__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.signal__tag { font-size: 12px; padding: 5px 11px; }
+
+/* hero made horizontal on desktop so it balances the taste-twins rail */
+@media (min-width: 960px) {
+  .topmatch { display: grid; grid-template-columns: 1.05fr 1fr; }
+  .topmatch__media { aspect-ratio: auto; height: 100%; min-height: 320px; }
+  .topmatch__body { display: flex; flex-direction: column; justify-content: center; }
+}
+
 /* taste-twin rail (right column on desktop) */
 .rail { border: 1px solid var(--mist); border-radius: 20px; background: var(--card); box-shadow: var(--shadow); padding: 18px 18px 8px; }
 .twin-rail { display: flex; flex-direction: column; }
@@ -428,6 +442,20 @@ button { font-family: inherit; }
 .modal__title { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; }
 .modal__close { border: none; background: transparent; font-size: 18px; cursor: pointer; color: var(--muted); }
 .modal__body { padding: 18px; }
+
+/* Recommend-a-place picker (header CTA dialog) ---------------------------- */
+.pick-list { display: flex; flex-direction: column; gap: 6px; max-height: 52vh; overflow: auto; }
+.pick-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 10px 11px; border: 1px solid var(--line); border-radius: 13px;
+  background: var(--card); cursor: pointer; transition: border-color 0.12s ease, background 0.12s ease;
+}
+.pick-row:hover { border-color: var(--pine); background: #f6faf7; }
+.pick-row__thumb { width: 44px; height: 44px; border-radius: 11px; flex: none; display: grid; place-items: center; font-size: 21px; background: #efe2d0; overflow: hidden; }
+.pick-row__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.pick-row__name { font-weight: 600; font-size: 15px; }
+.pick-row__meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.pick-row__go { margin-left: auto; color: var(--muted); font-size: 22px; line-height: 1; }
 
 /* Misc -------------------------------------------------------------------- */
 .muted { color: var(--muted); }

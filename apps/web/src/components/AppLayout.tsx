@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { RecommendDialog } from './RecommendDialog';
 
 /** App shell: top navigation bar + routed content. Desktop-web layout. */
 export function AppLayout() {
+  const [recommending, setRecommending] = useState(false);
+
   return (
     <div className="app">
       <header className="site-header">
@@ -31,7 +35,11 @@ export function AppLayout() {
           <span className="site-header__city">
             <PinIcon /> Munich
           </span>
-          <button type="button" className="site-header__cta">
+          <button
+            type="button"
+            className="site-header__cta"
+            onClick={() => setRecommending(true)}
+          >
             <PlusIcon />
             <span>Recommend a place</span>
           </button>
@@ -41,6 +49,8 @@ export function AppLayout() {
       <main className="app-main">
         <Outlet />
       </main>
+
+      {recommending && <RecommendDialog onClose={() => setRecommending(false)} />}
     </div>
   );
 }

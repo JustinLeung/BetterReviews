@@ -3,8 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import type { PlaceWithSummary } from '@betterreviews/shared';
 import { api } from '../api/client';
 import { useAsync } from '../hooks/useAsync';
-import { matchBand, scoreClass, scoreText } from '../lib/match';
+import { categoriesOf, matchBand, scoreClass, scoreText } from '../lib/match';
 import { SaveButton } from '../components/SaveButton';
+import { SignalRow } from '../components/SignalRow';
+
+const ALL = 'Best for me';
 
 /** Map-first discovery (the spatial interaction model): a sidebar list of
  *  places beside a map whose pins are colored by your match score and placed
@@ -12,6 +15,7 @@ import { SaveButton } from '../components/SaveButton';
 export function MapPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [category, setCategory] = useState(ALL);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data: places, loading, error, reload } = useAsync(() => api.listPlaces(), []);
@@ -31,10 +35,16 @@ export function MapPage() {
     [located],
   );
 
+  const categories = useMemo(() => [ALL, ...categoriesOf(located)], [located]);
+
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? ranked.filter((p) => p.name.toLowerCase().includes(q)) : ranked;
-  }, [ranked, query]);
+    return ranked.filter(
+      (p) =>
+        (category === ALL || p.category === category) &&
+        (!q || p.name.toLowerCase().includes(q)),
+    );
+  }, [ranked, query, category]);
 
   const selected = located.find((p) => p.id === selectedId) ?? visible[0] ?? ranked[0] ?? null;
 
@@ -54,11 +64,15 @@ export function MapPage() {
             />
           </div>
           <div className="map-filters">
-            <button className="chip on">Best for me</button>
-            <button className="chip">Open now</button>
-            <button className="chip">Bavarian</button>
-            <button className="chip">Café</button>
-            <button className="chip">Fine dining</button>
+            {categories.map((c) => (
+              <button
+                key={c}
+                className={`chip ${c === category ? 'on' : ''}`}
+                onClick={() => setCategory(c)}
+              >
+                {c}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -149,6 +163,7 @@ export function MapPage() {
               </div>
             </div>
             <p className="whyline">{selected.matchScore.label}.</p>
+            <SignalRow place={selected} />
             <div className="map-card__cta">
               <SaveButton placeId={selected.id} saved={selected.saved} />
               <button className="btn btn--primary" onClick={() => navigate(`/places/${selected.id}`)}>

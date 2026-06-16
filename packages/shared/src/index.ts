@@ -5,6 +5,8 @@ export { RECOMMENDATION_VALUES, VISIBILITIES, REASON_SENTIMENTS } from './consta
 export {
   SCORE_WEIGHTS,
   MIN_SAMPLE_SIZE,
+  PRIOR_MEAN,
+  PRIOR_STRENGTH,
   calculateMatchScore,
   matchScoreLabel,
 } from './score';
