@@ -14,6 +14,11 @@ types.setTypeParser(1082, (value) => value);
  */
 export const pool = new Pool({
   connectionString: env.DATABASE_URL,
+  // Put `extensions` on the search_path so PostGIS functions (ST_*) resolve in
+  // every query. On Supabase PostGIS lives in `extensions`; on plain Docker /
+  // Render it's in `public`, where the missing `extensions` entry is simply
+  // ignored. Applied at connection startup — no per-query round-trip.
+  options: '-c search_path=public,extensions',
   // Supabase (and most managed Postgres) require SSL. Local Docker does not.
   // TODO: tighten this once a real CA is wired up for production.
   ssl: /supabase\.|sslmode=require/.test(env.DATABASE_URL)

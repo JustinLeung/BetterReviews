@@ -10,6 +10,12 @@
 
 CREATE EXTENSION IF NOT EXISTS postgis; -- requires a PostGIS-enabled image (see docker-compose.yml)
 
+-- Resolve PostGIS types/functions whether the extension lives in `public`
+-- (plain Docker / Render) or a dedicated `extensions` schema (Supabase, which
+-- pre-installs it there). The runner wraps each migration in a transaction, so
+-- SET LOCAL is scoped to this migration; a non-existent schema is ignored.
+SET LOCAL search_path = public, extensions, pg_temp;
+
 -- 1. posts: each visit is its own content item (no UNIQUE(user, place)) -------
 CREATE TABLE IF NOT EXISTS posts (
   id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -76,8 +82,14 @@ ALTER TABLE places ADD COLUMN IF NOT EXISTS geog geography(Point, 4326);
 -- Keep latitude/longitude as the client-facing values; derive geog from them
 -- for spatial queries. A GENERATED column can't be used (the geography cast
 -- isn't IMMUTABLE), so a trigger maintains it on insert and on lat/long change.
+-- search_path is pinned on the function so the unqualified ST_* / geography
+-- calls resolve at trigger time regardless of the caller's session search_path
+-- (e.g. on Supabase, where PostGIS lives in `extensions`).
 CREATE OR REPLACE FUNCTION set_place_geog()
-RETURNS trigger AS $$
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public, extensions, pg_temp
+AS $$
 BEGIN
   IF NEW.latitude IS NOT NULL AND NEW.longitude IS NOT NULL THEN
     NEW.geog := ST_SetSRID(ST_MakePoint(NEW.longitude, NEW.latitude), 4326)::geography;
@@ -86,7 +98,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 DROP TRIGGER IF EXISTS trg_places_geog ON places;
 CREATE TRIGGER trg_places_geog
