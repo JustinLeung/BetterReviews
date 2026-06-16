@@ -1,11 +1,11 @@
 import type {
   CreatePhotoInput,
-  CreateRecommendationInput,
+  CreatePostInput,
   Photo,
   PlaceDetail,
   PlaceWithSummary,
+  PostWithDetails,
   ReasonTag,
-  RecommendationWithDetails,
   Save,
 } from '@betterreviews/shared';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
@@ -90,19 +90,19 @@ export const api = {
   getPlace: (id: string) =>
     request<{ place: PlaceDetail }>(`/places/${id}`).then((r) => r.place),
 
-  listRecommendations: (placeId: string) =>
-    request<{ recommendations: RecommendationWithDetails[] }>(
-      `/places/${placeId}/recommendations`,
-    ).then((r) => r.recommendations),
+  listPosts: (placeId: string) =>
+    request<{ posts: PostWithDetails[] }>(`/places/${placeId}/posts`).then(
+      (r) => r.posts,
+    ),
 
   listReasonTags: () =>
     request<{ reasonTags: ReasonTag[] }>('/reason-tags').then((r) => r.reasonTags),
 
-  createRecommendation: (input: CreateRecommendationInput) =>
-    request<{ recommendation: RecommendationWithDetails }>('/recommendations', {
+  createPost: (input: CreatePostInput) =>
+    request<{ post: PostWithDetails }>('/posts', {
       method: 'POST',
       body: JSON.stringify(input),
-    }).then((r) => r.recommendation),
+    }).then((r) => r.post),
 
   createPhoto: (input: CreatePhotoInput) =>
     request<{ photo: Photo }>('/photos', {

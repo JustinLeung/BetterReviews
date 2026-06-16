@@ -256,6 +256,7 @@ img { display: block; max-width: 100%; }
 .rec-item__value--yes { color: var(--yes); }
 .rec-item__value--maybe { color: var(--maybe); }
 .rec-item__value--no { color: var(--no); }
+.rec-item__note { margin: 0; color: var(--ink); font-size: 14px; line-height: 1.45; }
 
 /* Recommendation form ----------------------------------------------------- */
 .rec-form { display: flex; flex-direction: column; gap: 18px; }

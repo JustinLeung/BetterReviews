@@ -10,17 +10,31 @@ import {
 import { query } from '../db/pool';
 
 /**
+ * Derived table of one row per (place, user) carrying that user's LATEST post
+ * value, so a prolific poster counts once toward the place's match score. Used
+ * with `count(*) FILTER (...)` over the `stance` alias and `GROUP BY p.id`.
+ */
+const LATEST_STANCE_JOIN = `
+  LEFT JOIN (
+    SELECT DISTINCT ON (place_id, user_id) place_id, recommendation_value
+    FROM posts
+    ORDER BY place_id, user_id, created_at DESC
+  ) stance ON stance.place_id = p.id
+`;
+
+/**
  * SELECT fragment that enriches a `places` row with aggregate recommendation
- * counts, a cover photo, and whether the given user has saved it.
+ * counts (one vote per user, see LATEST_STANCE_JOIN), a cover photo, and
+ * whether the given user has saved it.
  *
  * Parameter placeholder for the user id is supplied by callers; see usages.
  */
 function enrichedPlaceColumns(userParam: string): string {
   return `
     p.*,
-    count(r.id) FILTER (WHERE r.recommendation_value = 'yes')   AS yes_count,
-    count(r.id) FILTER (WHERE r.recommendation_value = 'maybe') AS maybe_count,
-    count(r.id) FILTER (WHERE r.recommendation_value = 'no')    AS no_count,
+    count(*) FILTER (WHERE stance.recommendation_value = 'yes')   AS yes_count,
+    count(*) FILTER (WHERE stance.recommendation_value = 'maybe') AS maybe_count,
+    count(*) FILTER (WHERE stance.recommendation_value = 'no')    AS no_count,
     (
       SELECT ph.image_url FROM photos ph
       WHERE ph.place_id = p.id AND ph.image_url IS NOT NULL
@@ -77,7 +91,7 @@ export async function listPlaces(
     `
     SELECT ${enrichedPlaceColumns('$4')}
     FROM places p
-    LEFT JOIN recommendations r ON r.place_id = p.id
+    ${LATEST_STANCE_JOIN}
     WHERE ($1::text IS NULL OR p.city ILIKE $1)
       AND ($2::text IS NULL OR p.category ILIKE $2)
       AND ($3::text IS NULL OR p.name ILIKE '%' || $3 || '%' OR p.address ILIKE '%' || $3 || '%')
@@ -98,7 +112,7 @@ export async function getPlaceDetail(
     `
     SELECT ${enrichedPlaceColumns('$2')}
     FROM places p
-    LEFT JOIN recommendations r ON r.place_id = p.id
+    ${LATEST_STANCE_JOIN}
     WHERE p.id = $1
     GROUP BY p.id
     `,
@@ -115,10 +129,10 @@ export async function getPlaceDetail(
     query<ReasonTagSummaryItem>(
       `
       SELECT rt.id, rt.label, rt.sentiment, count(*)::int AS count
-      FROM recommendation_reason_tags rrt
-      JOIN reason_tags rt ON rt.id = rrt.reason_tag_id
-      JOIN recommendations r ON r.id = rrt.recommendation_id
-      WHERE r.place_id = $1
+      FROM post_reason_tags prt
+      JOIN reason_tags rt ON rt.id = prt.reason_tag_id
+      JOIN posts po ON po.id = prt.post_id
+      WHERE po.place_id = $1
       GROUP BY rt.id, rt.label, rt.sentiment
       ORDER BY count DESC, rt.label ASC
       `,
@@ -161,7 +175,7 @@ export async function listSavedPlaces(userId: string): Promise<PlaceWithSummary[
     SELECT ${enrichedPlaceColumns('$1')}
     FROM places p
     JOIN saves sv ON sv.place_id = p.id AND sv.user_id = $1::uuid
-    LEFT JOIN recommendations r ON r.place_id = p.id
+    ${LATEST_STANCE_JOIN}
     GROUP BY p.id, sv.created_at
     ORDER BY sv.created_at DESC
     `,

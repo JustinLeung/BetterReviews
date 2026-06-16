@@ -1,6 +1,12 @@
-import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
+import { Pool, type PoolClient, type QueryResult, type QueryResultRow, types } from 'pg';
 import { env } from '../config/env';
 import { logger } from '../lib/logger';
+
+// Return DATE columns (OID 1082) as the raw 'YYYY-MM-DD' string instead of a JS
+// Date. The default parser builds a Date at local midnight, which serializes to
+// the previous day in UTC — an off-by-one for date-only fields like
+// posts.visited_at. timestamptz (OID 1184) is unaffected.
+types.setTypeParser(1082, (value) => value);
 
 /**
  * Shared Postgres connection pool. A single pool is created per process and

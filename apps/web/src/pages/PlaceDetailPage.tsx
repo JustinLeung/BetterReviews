@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import type { RecommendationValue, RecommendationWithDetails } from '@betterreviews/shared';
+import type { PostWithDetails, RecommendationValue } from '@betterreviews/shared';
 import { api } from '../api/client';
 import { useAsync } from '../hooks/useAsync';
 import { useAuth } from '../auth/AuthProvider';
@@ -31,13 +31,13 @@ export function PlaceDetailPage() {
   };
 
   const place = useAsync(() => api.getPlace(id), [id]);
-  const recs = useAsync(() => api.listRecommendations(id), [id]);
+  const posts = useAsync(() => api.listPosts(id), [id]);
   const reasonTags = useAsync(() => api.listReasonTags(), []);
 
   const onSubmitted = () => {
     setShowForm(false);
     place.reload();
-    recs.reload();
+    posts.reload();
   };
 
   if (place.loading) return <p className="muted page">Loading…</p>;
@@ -105,14 +105,14 @@ export function PlaceDetailPage() {
 
       <section className="section">
         <h2 className="section__title">Recommendations</h2>
-        {recs.loading && <p className="muted">Loading…</p>}
-        {recs.data && recs.data.length === 0 && (
+        {posts.loading && <p className="muted">Loading…</p>}
+        {posts.data && posts.data.length === 0 && (
           <p className="muted">No recommendations yet. Be the first!</p>
         )}
-        {recs.data && recs.data.length > 0 && (
+        {posts.data && posts.data.length > 0 && (
           <ul className="rec-list">
-            {recs.data.map((rec) => (
-              <RecommendationItem key={rec.id} rec={rec} />
+            {posts.data.map((post) => (
+              <PostItem key={post.id} post={post} />
             ))}
           </ul>
         )}
@@ -132,30 +132,31 @@ export function PlaceDetailPage() {
   );
 }
 
-function RecommendationItem({ rec }: { rec: RecommendationWithDetails }) {
+function PostItem({ post }: { post: PostWithDetails }) {
   return (
     <li className="rec-item">
       <div className="rec-item__head">
-        {rec.user.avatar_url && (
-          <img className="rec-item__avatar" src={rec.user.avatar_url} alt="" />
+        {post.user.avatar_url && (
+          <img className="rec-item__avatar" src={post.user.avatar_url} alt="" />
         )}
         <div>
-          <strong>{rec.user.display_name}</strong>
-          <span className={`rec-item__value rec-item__value--${rec.recommendation_value}`}>
-            {VALUE_BADGE[rec.recommendation_value]}
+          <strong>{post.user.display_name}</strong>
+          <span className={`rec-item__value rec-item__value--${post.recommendation_value}`}>
+            {VALUE_BADGE[post.recommendation_value]}
           </span>
         </div>
       </div>
-      {rec.reasonTags.length > 0 && (
+      {post.note && <p className="rec-item__note">{post.note}</p>}
+      {post.reasonTags.length > 0 && (
         <div className="tag-picker__chips">
-          {rec.reasonTags.map((tag) => (
+          {post.reasonTags.map((tag) => (
             <span key={tag.id} className={`chip chip--${tag.sentiment} chip--static`}>
               {tag.label}
             </span>
           ))}
         </div>
       )}
-      {rec.photos.length > 0 && <PhotoGrid photos={rec.photos} />}
+      {post.photos.length > 0 && <PhotoGrid photos={post.photos} />}
     </li>
   );
 }

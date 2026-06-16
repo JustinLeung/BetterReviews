@@ -5,7 +5,7 @@ import { ApiError } from '../lib/errors';
 import { validateBody, validateQuery } from '../middleware/validate';
 import { requireUser } from '../middleware/auth';
 import * as placeService from '../services/placeService';
-import { listRecommendationsForPlace } from '../services/recommendationService';
+import { listPostsForPlace } from '../services/postService';
 import { savePlace, unsavePlace } from '../services/saveService';
 
 const placesQuerySchema = z.object({
@@ -58,15 +58,12 @@ placesRouter.get(
   }),
 );
 
-/** GET /places/:id/recommendations */
+/** GET /places/:id/posts */
 placesRouter.get(
-  '/:id/recommendations',
+  '/:id/posts',
   asyncHandler(async (req, res) => {
-    const recommendations = await listRecommendationsForPlace(
-      req.params.id,
-      req.userId,
-    );
-    res.json({ recommendations });
+    const posts = await listPostsForPlace(req.params.id, req.userId);
+    res.json({ posts });
   }),
 );
 
