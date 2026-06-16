@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+dist
+**/dist
+*.tsbuildinfo
+.git
+.gitignore
+.env
+**/.env
+!**/.env.example
+*.log
+.DS_Store
+README.md

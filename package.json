@@ -1,0 +1,28 @@
+{
+  "name": "betterreviews",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Photo-first local recommendation app — discover places your friends and people with similar taste would actually recommend.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build -w @betterreviews/shared && npm run build -w @betterreviews/server && npm run build -w @betterreviews/web",
+    "predev": "npm run build -w @betterreviews/shared",
+    "dev": "concurrently -k -n shared,server,web -c blue,green,magenta \"npm:dev:shared\" \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:shared": "npm run dev -w @betterreviews/shared",
+    "dev:server": "npm run dev -w @betterreviews/server",
+    "dev:web": "npm run dev -w @betterreviews/web",
+    "migrate": "npm run migrate -w @betterreviews/server",
+    "seed": "npm run seed -w @betterreviews/server",
+    "db:reset": "npm run migrate && npm run seed",
+    "typecheck": "npm run typecheck -w @betterreviews/shared && npm run typecheck -w @betterreviews/server && npm run typecheck -w @betterreviews/web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

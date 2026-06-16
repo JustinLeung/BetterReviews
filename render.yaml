@@ -1,0 +1,54 @@
+# Render blueprint. Deploys the API as a Node web service backed by a managed
+# Postgres database, plus the Vite client as a static site.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Secrets (Supabase keys, the client API URL) are marked `sync: false` and must
+# be filled in via the Render dashboard. Do not commit real values.
+
+databases:
+  - name: betterreviews-db
+    plan: free
+
+services:
+  # --- API server ----------------------------------------------------------
+  - type: web
+    name: betterreviews-server
+    runtime: node
+    plan: free
+    # Render injects PORT automatically; the server reads it from env.
+    buildCommand: npm install && npm run build -w @betterreviews/shared && npm run build -w @betterreviews/server
+    # migrate is idempotent; it runs on each deploy before the server starts.
+    startCommand: npm run migrate -w @betterreviews/server && npm run start -w @betterreviews/server
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: betterreviews-db
+          property: connectionString
+      # Comma-separated list of allowed origins (your deployed web URL).
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # NOTE: leave MOCK_USER_ID UNSET in production — mock auth is dev-only.
+
+  # --- Web client (static Vite build) -------------------------------------
+  - type: web
+    name: betterreviews-web
+    runtime: static
+    buildCommand: npm install && npm run build -w @betterreviews/shared && npm run build -w @betterreviews/web
+    staticPublishPath: apps/web/dist
+    # Vite inlines VITE_* vars at build time — set this to the deployed API URL.
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

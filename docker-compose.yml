@@ -1,0 +1,61 @@
+# Local development stack: Postgres + API server + web client.
+# Usage:  cp .env.example .env  &&  docker compose up --build
+#
+# The server applies migrations and seed data on startup (both idempotent), so
+# the app is ready as soon as the containers are healthy.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-betterreviews}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-betterreviews}
+      POSTGRES_DB: ${POSTGRES_DB:-betterreviews}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-betterreviews} -d ${POSTGRES_DB:-betterreviews}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://${POSTGRES_USER:-betterreviews}:${POSTGRES_PASSWORD:-betterreviews}@db:5432/${POSTGRES_DB:-betterreviews}
+      MOCK_USER_ID: ${MOCK_USER_ID:-00000000-0000-0000-0000-000000000001}
+      CORS_ORIGINS: http://localhost:5173
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      # The browser runs on the host, so it reaches the server via the
+      # published port — not the internal `server` hostname.
+      VITE_API_BASE_URL: http://localhost:4000
+      VITE_MOCK_USER_ID: ${MOCK_USER_ID:-00000000-0000-0000-0000-000000000001}
+    ports:
+      - "5173:5173"
+    depends_on:
+      - server
+
+volumes:
+  db_data:
