@@ -1,5 +1,7 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
+import { FeedPage } from './pages/FeedPage';
+import { MapPage } from './pages/MapPage';
 import { HomePage } from './pages/HomePage';
 import { PlaceDetailPage } from './pages/PlaceDetailPage';
 import { SavedPage } from './pages/SavedPage';
@@ -8,7 +10,9 @@ const router = createBrowserRouter([
   {
     element: <AppLayout />,
     children: [
-      { path: '/', element: <HomePage /> },
+      { path: '/', element: <FeedPage /> },
+      { path: '/map', element: <MapPage /> },
+      { path: '/list', element: <HomePage /> },
       { path: '/places/:id', element: <PlaceDetailPage /> },
       { path: '/saved', element: <SavedPage /> },
       { path: '*', element: <NotFound /> },
