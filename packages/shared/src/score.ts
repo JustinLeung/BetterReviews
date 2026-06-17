@@ -16,11 +16,25 @@ export const SCORE_WEIGHTS: Record<'yes' | 'maybe' | 'no', number> = {
 export const MIN_SAMPLE_SIZE = 1;
 
 /**
+ * Bayesian shrinkage parameters. With only a handful of recommendations a raw
+ * average is wildly overconfident — two "yes" votes should not read as a
+ * universal 100% match. We blend the observed average toward a neutral prior,
+ * so a score only approaches its extreme once enough people have weighed in.
+ *
+ *   PRIOR_MEAN     — the neutral expectation a place regresses to (0.5 = 50%).
+ *   PRIOR_STRENGTH — how many "virtual" neutral votes to mix in (the pseudo-count).
+ */
+export const PRIOR_MEAN = 0.5;
+export const PRIOR_STRENGTH = 3;
+
+/**
  * Placeholder personalized score.
  *
- * v0 is a simple weighted average of the aggregate yes/maybe/no signal:
+ * v0 is a weighted average of the aggregate yes/maybe/no signal, regressed
+ * toward a neutral prior so that low-sample scores stay honest:
  *
- *     score = (yes*1 + maybe*0.4 + no*0) / total * 100
+ *     raw   = yes*1 + maybe*0.4 + no*0
+ *     score = (raw + PRIOR_STRENGTH*PRIOR_MEAN) / (total + PRIOR_STRENGTH) * 100
  *
  * It is intentionally NOT personalized yet. Replace this with a real scorer
  * later; keep the signature stable so the API and client are unaffected.
@@ -42,9 +56,10 @@ export function calculateMatchScore(
   }
 
   const weighted =
-    (yes * SCORE_WEIGHTS.yes + maybe * SCORE_WEIGHTS.maybe + no * SCORE_WEIGHTS.no) /
-    total;
-  const matchScore = Math.round(weighted * 100);
+    yes * SCORE_WEIGHTS.yes + maybe * SCORE_WEIGHTS.maybe + no * SCORE_WEIGHTS.no;
+  const shrunk =
+    (weighted + PRIOR_STRENGTH * PRIOR_MEAN) / (total + PRIOR_STRENGTH);
+  const matchScore = Math.round(shrunk * 100);
 
   return {
     matchScore,

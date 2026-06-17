@@ -118,6 +118,8 @@ export interface PlaceWithSummary extends Place {
   coverPhotoUrl: string | null;
   /** Whether the current (mock) user has saved this place. */
   saved: boolean;
+  /** The reasons people most often select for this place (most-cited first). */
+  topReasonTags: ReasonTagSummaryItem[];
 }
 
 /** Place detail view, with photos and the reasons people selected. */

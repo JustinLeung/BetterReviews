@@ -58,9 +58,44 @@ function rowToPlaceWithSummary(row: any): PlaceWithSummary {
     matchScore: calculateMatchScore(recommendationSummary),
     coverPhotoUrl: row.cover_photo_url ?? null,
     saved: Boolean(row.saved),
+    topReasonTags: [],
   };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
+
+/** Max reason tags surfaced on a place card. */
+const TOP_REASON_TAGS = 3;
+
+/**
+ * Fill each place's `topReasonTags` in one batched query, so discover/list
+ * cards can show the real reasons people cite without an N+1 per place.
+ */
+async function attachTopReasonTags(places: PlaceWithSummary[]): Promise<void> {
+  if (places.length === 0) return;
+  const ids = places.map((p) => p.id);
+  const { rows } = await query<ReasonTagSummaryItem & { place_id: string }>(
+    `
+    SELECT r.place_id, rt.id, rt.label, rt.sentiment, count(*)::int AS count
+    FROM recommendation_reason_tags rrt
+    JOIN reason_tags rt ON rt.id = rrt.reason_tag_id
+    JOIN recommendations r ON r.id = rrt.recommendation_id
+    WHERE r.place_id = ANY($1::uuid[])
+    GROUP BY r.place_id, rt.id, rt.label, rt.sentiment
+    ORDER BY count DESC, rt.label ASC
+    `,
+    [ids],
+  );
+
+  const byPlace = new Map<string, ReasonTagSummaryItem[]>();
+  for (const { place_id, ...tag } of rows) {
+    const list = byPlace.get(place_id) ?? [];
+    if (list.length < TOP_REASON_TAGS) list.push(tag);
+    byPlace.set(place_id, list);
+  }
+  for (const place of places) {
+    place.topReasonTags = byPlace.get(place.id) ?? [];
+  }
+}
 
 export interface PlaceFilters {
   city?: string;
@@ -86,7 +121,9 @@ export async function listPlaces(
     `,
     [filters.city ?? null, filters.category ?? null, filters.search ?? null, userId],
   );
-  return rows.map(rowToPlaceWithSummary);
+  const places = rows.map(rowToPlaceWithSummary);
+  await attachTopReasonTags(places);
+  return places;
 }
 
 /** GET /places/:id — full detail with photos and reason-tag breakdown. */
@@ -126,7 +163,12 @@ export async function getPlaceDetail(
     ),
   ]);
 
-  return { ...base, photos: photoRows, reasonTagSummary: tagRows };
+  return {
+    ...base,
+    topReasonTags: tagRows.slice(0, TOP_REASON_TAGS),
+    photos: photoRows,
+    reasonTagSummary: tagRows,
+  };
 }
 
 /** POST /places */
@@ -167,7 +209,9 @@ export async function listSavedPlaces(userId: string): Promise<PlaceWithSummary[
     `,
     [userId],
   );
-  return rows.map(rowToPlaceWithSummary);
+  const places = rows.map(rowToPlaceWithSummary);
+  await attachTopReasonTags(places);
+  return places;
 }
 
 /** Whether a place exists. */

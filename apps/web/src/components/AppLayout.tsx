@@ -1,25 +1,50 @@
+import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
+import { RecommendDialog } from './RecommendDialog';
 
-/** App shell: header nav + auth bar + routed content. Mobile-first. */
+/** App shell: top navigation bar + auth bar + routed content. */
 export function AppLayout() {
+  const [recommending, setRecommending] = useState(false);
+
   return (
     <div className="app">
-      <header className="app-header">
-        <div className="app-header__inner">
+      <header className="site-header">
+        <div className="site-header__inner">
           <NavLink to="/" className="brand">
             <span className="brand__mark">◆</span>
             <span className="brand__name">BetterReviews</span>
           </NavLink>
-          <nav className="app-nav">
+
+          <nav className="site-nav">
             <NavLink to="/" end className={navClass}>
               Discover
+            </NavLink>
+            <NavLink to="/map" className={navClass}>
+              Map
+            </NavLink>
+            <NavLink to="/list" className={navClass}>
+              List
             </NavLink>
             <NavLink to="/saved" className={navClass}>
               Saved
             </NavLink>
             <AuthBar />
           </nav>
+
+          <span className="site-header__spacer" />
+
+          <span className="site-header__city">
+            <PinIcon /> Munich
+          </span>
+          <button
+            type="button"
+            className="site-header__cta"
+            onClick={() => setRecommending(true)}
+          >
+            <PlusIcon />
+            <span>Recommend a place</span>
+          </button>
         </div>
       </header>
 
@@ -27,9 +52,7 @@ export function AppLayout() {
         <Outlet />
       </main>
 
-      <footer className="app-footer">
-        <p>Recommendations from friends and people with similar taste — not universal ratings.</p>
-      </footer>
+      {recommending && <RecommendDialog onClose={() => setRecommending(false)} />}
     </div>
   );
 }
@@ -57,5 +80,21 @@ function AuthBar() {
 }
 
 function navClass({ isActive }: { isActive: boolean }): string {
-  return `app-nav__link ${isActive ? 'is-active' : ''}`;
+  return `site-nav__link ${isActive ? 'is-active' : ''}`;
+}
+
+function PinIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+      <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
 }
